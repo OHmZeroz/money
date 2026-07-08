@@ -46,6 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ระบบสแกนสลิป
     const btnStartCamera = document.getElementById("btn-start-camera");
     const btnUploadFile = document.getElementById("btn-upload-file");
+    const btnTestPaySuccess = document.getElementById("btn-test-pay-success");
     const slipFileInput = document.getElementById("slip-file-input");
     const scanContainer = document.getElementById("scan-container");
     const verifyOverlay = document.getElementById("verify-overlay");
@@ -202,7 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // โหลดข้อมูลเบอร์พร้อมเพย์ลงอินพุตของแอดมิน
         adminPromptpayInput.value = localStorage.getItem("classroom_promptpay_target");
         // โหลดข้อมูลลิงก์ Google Sheets
-        adminGSheetInput.value = localStorage.getItem("classroom_google_sheet_url") || "";
+        adminGSheetInput.value = localStorage.getItem("classroom_google_sheet_url") || window.classroomDb.webAppUrl;
         renderAdminDashboard();
         showView("admin");
         studentIdInput.value = "";
@@ -393,6 +394,23 @@ document.addEventListener("DOMContentLoaded", () => {
         slipFileInput.click();
     });
 
+    // ปุ่มจำลองการโอนสำเร็จสำหรับใช้ทดสอบ (Test Button)
+    if (btnTestPaySuccess) {
+        btnTestPaySuccess.addEventListener("click", () => {
+            stopQRScanner();
+            verifyOverlay.style.display = "flex";
+            verifyOverlay.innerHTML = `
+                <div class="spinner"></div>
+                <p style="font-weight:600;">กำลังจำลองการโอนเงินสำเร็จ...</p>
+            `;
+            
+            // ดีเลย์ 1 วินาทีแล้วจำลองการชำระเงิน
+            setTimeout(() => {
+                simulateSlipVerification("MOCK-TEST-FAST-PAYMENT-BUTTON");
+            }, 1000);
+        });
+    }
+
     slipFileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -447,7 +465,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // บันทึกสถานะการชำระเงินลงในระบบ
         if (state.currentUser) {
-            window.classroomDb.updatePaymentStatus(studentId, month, true);
+            window.classroomDb.updatePaymentStatusRemote(studentId, month, true).then(result => {
+                if (result.success) {
+                    if (!result.localOnly) {
+                        showToast("ส่งข้อมูลการชำระเงินไปยัง Google Sheet เรียบร้อย!", "success");
+                    }
+                } else {
+                    showToast(`ส่งข้อมูลไปยังชีตล้มเหลว: ${result.error}`, "danger");
+                }
+            });
         }
 
         // แสดงผลลัพธ์การตรวจสอบสลิปสำเร็จใน Overlay
@@ -572,21 +598,34 @@ document.addEventListener("DOMContentLoaded", () => {
                 const sId = e.target.getAttribute("data-student-id");
                 const checked = e.target.checked;
                 
+                showToast(`กำลังบันทึกสถานะของ ${student.name}...`, "warning");
+                
                 // อัปเดตค่าลงใน Database
-                dbInstance.updatePaymentStatus(sId, state.selectedMonth, checked);
-                
-                // คำนวณยอดเงินและสถิติใหม่เฉพาะจุด
-                const newStats = dbInstance.getStats(state.selectedMonth);
-                metricTotalPaid.textContent = `${newStats.paidCount} / ${newStats.totalStudents} คน`;
-                metricTotalAmount.textContent = `${newStats.paidAmount.toLocaleString()} บาท`;
-                metricPercentText.textContent = `${newStats.percentPaid}% จ่ายแล้ว`;
-                progressFill.style.width = `${newStats.percentPaid}%`;
-                
-                // เปลี่ยนข้อความประกอบสวิตช์
-                const label = e.target.closest(".status-toggle").querySelector(".status-text-label");
-                label.textContent = checked ? "จ่ายแล้ว" : "ยังไม่จ่าย";
+                dbInstance.updatePaymentStatusRemote(sId, state.selectedMonth, checked).then(result => {
+                    // คำนวณยอดเงินและสถิติใหม่เฉพาะจุด
+                    const newStats = dbInstance.getStats(state.selectedMonth);
+                    metricTotalPaid.textContent = `${newStats.paidCount} / ${newStats.totalStudents} คน`;
+                    metricTotalAmount.textContent = `${newStats.paidAmount.toLocaleString()} บาท`;
+                    metricPercentText.textContent = `${newStats.percentPaid}% จ่ายแล้ว`;
+                    progressFill.style.width = `${newStats.percentPaid}%`;
+                    
+                    // เปลี่ยนข้อความประกอบสวิตช์
+                    const label = e.target.closest(".status-toggle").querySelector(".status-text-label");
+                    label.textContent = checked ? "จ่ายแล้ว" : "ยังไม่จ่าย";
 
-                showToast(`อัปเดตสถานะของ ${student.name} เป็น ${checked ? "จ่ายแล้ว" : "ยังไม่ได้จ่าย"}`, "success");
+                    if (result.success) {
+                        if (!result.localOnly) {
+                            showToast(`อัปเดตสถานะของ ${student.name} บน Google Sheet เรียบร้อย!`, "success");
+                        } else {
+                            showToast(`อัปเดตสถานะของ ${student.name} เรียบร้อย (ในเบราว์เซอร์)`, "success");
+                        }
+                    } else {
+                        showToast(`อัปเดตบน Google Sheet ล้มเหลว: ${result.error}`, "danger");
+                        // คืนค่าสถานะเดิม
+                        dbInstance.updatePaymentStatus(sId, state.selectedMonth, !checked);
+                        renderAdminDashboard();
+                    }
+                });
             });
 
             studentListTableBody.appendChild(row);
@@ -687,20 +726,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // ซิงค์เมื่อนักเรียนกดปุ่มดึงข้อมูลล่าสุด
     if (btnStudentSyncGSheet) {
         btnStudentSyncGSheet.addEventListener("click", () => {
-            const url = localStorage.getItem("classroom_google_sheet_url");
+            const url = localStorage.getItem("classroom_google_sheet_url") || window.classroomDb.webAppUrl;
             performSync(url);
         });
     }
 
-    // ซิงค์อัตโนมัติเมื่อโหลดหน้าเว็บเงียบๆ (ถ้ามีลิงก์อยู่แล้ว)
-    const initialSheetUrl = localStorage.getItem("classroom_google_sheet_url");
-    if (initialSheetUrl) {
-        window.classroomDb.syncWithGoogleSheet(initialSheetUrl).then(result => {
-            if (result.success) {
-                console.log(`Auto-synced ${result.count} students from Google Sheet on load.`);
-            }
-        }).catch(err => {
-            console.error("Auto-sync error on page load:", err);
-        });
-    }
+    // ซิงค์อัตโนมัติเมื่อโหลดหน้าเว็บทุกครั้งจาก Google Sheets
+    const initialSheetUrl = localStorage.getItem("classroom_google_sheet_url") || window.classroomDb.webAppUrl;
+    window.classroomDb.syncWithGoogleSheet(initialSheetUrl).then(result => {
+        if (result.success) {
+            console.log(`Auto-synced ${result.count} students from Google Sheet on load.`);
+        }
+    }).catch(err => {
+        console.error("Auto-sync error on page load:", err);
+    });
 });

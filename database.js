@@ -1,47 +1,7 @@
-// database.js - ฐานข้อมูลจำลองของนักเรียนในเซคและสถานะการจ่ายเงิน
+// database.js - ฐานข้อมูลของนักเรียนและสถานะการจ่ายเงิน ดึงจาก Google Sheets
 // ข้อมูลนี้ถูกเก็บไว้ใน localStorage เพื่อประหยัดสถานะเมื่อรีเฟรชหน้าจอ
 
-const DEFAULT_STUDENT_LIST = [
-    { id: "69010012", name: "คุณเก้า", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010024", name: "คุณเซเว่น", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010068", name: "คุณเหนือเมฆ", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010078", name: "คุณไตเติ้ล", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010115", name: "คุณโอม", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010165", name: "คุณน้ำเย็น", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010188", name: "คุณถั่วพู", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010202", name: "คุณฟลุ๊ค", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010215", name: "คุณจอม", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010253", name: "คุณลีโอ", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010320", name: "คุณปาย", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010375", name: "คุณวินเนอร์", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010433", name: "คุณยอด", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010472", name: "คุณเกม", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010588", name: "คุณทู", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010626", name: "คุณโมเม", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010649", name: "คุณตี๋", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010650", name: "คุณทัต", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010760", name: "คุณบิว", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010798", name: "คุณปาแปง", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010810", name: "คุณบอส", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010835", name: "คุณเม้ว", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010836", name: "คุณไนน์", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010854", name: "คุณกัส", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010869", name: "คุณภู", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69010911", name: "คุณต้นยาง", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011055", name: "คุณยู", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011059", name: "คุณพีค", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011134", name: "คุณปลื้ม", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011267", name: "คุณแฟร้งค์", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011606", name: "คุณโอชิ", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011613", name: "คุณเก้า", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011623", name: "คุณโอ๊ค", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011672", name: "คุณแพททริค", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011750", name: "คุณภูผา", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011806", name: "คุณเมธัส", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011824", name: "คุณเก็ต", status: { "June": false, "July": false, "August": false, "September": false } },
-    { id: "69011850", name: "คุณต้นน้ำ", status: { "June": false, "July": false, "August": false, "September": false } }
-];
-
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbweU-0aOR-GHal1ZwSvG2b-Zt_kJ24Cyqma9cj4cJ5bNb5TIwXT7WiU-weawrhSDUCL/exec";
 const STORAGE_KEY = "classroom_payment_db_v3";
 const MONTH_NAMES = {
     "June": "มิถุนายน",
@@ -53,6 +13,17 @@ const MONTH_NAMES = {
 class ClassroomDatabase {
     constructor() {
         this.students = [];
+        this.webAppUrl = WEB_APP_URL;
+        
+        // ไมเกรตลิงก์สคริปต์เก่าไปยังลิงก์ใหม่โดยอัตโนมัติบนเบราว์เซอร์ของผู้ใช้
+        const savedUrl = localStorage.getItem("classroom_google_sheet_url");
+        if (savedUrl && (
+            savedUrl.includes("AKfycby8_S081Npo5vqtrLAFpWdcKSPSCZeYI8Ttx-HA7lMMRmpdBnUTdKzxuOV5azAldAhs") ||
+            savedUrl.includes("AKfycbwAWJRG_Lroxn4HsVeNR1_weAylCgbO_l1gZuSMqq-HYGYAmNC5C4N6D8dVU9VcoARO")
+        )) {
+            localStorage.setItem("classroom_google_sheet_url", WEB_APP_URL);
+        }
+        
         this.loadDatabase();
     }
 
@@ -66,18 +37,14 @@ class ClassroomDatabase {
                 if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id && parsed[0].status) {
                     this.students = parsed;
                 } else {
-                    console.warn("Invalid database structure, resetting to default");
-                    this.students = JSON.parse(JSON.stringify(DEFAULT_STUDENT_LIST));
-                    this.saveDatabase();
+                    this.students = [];
                 }
             } catch (e) {
-                console.error("Error parsing stored database, resetting to default", e);
-                this.students = JSON.parse(JSON.stringify(DEFAULT_STUDENT_LIST));
-                this.saveDatabase();
+                console.error("Error parsing stored database, resetting to empty", e);
+                this.students = [];
             }
         } else {
-            this.students = JSON.parse(JSON.stringify(DEFAULT_STUDENT_LIST));
-            this.saveDatabase();
+            this.students = [];
         }
     }
 
@@ -180,9 +147,40 @@ class ClassroomDatabase {
     }
 
     // ดึงข้อมูลสถานะการจ่ายเงินจาก Google Sheet และบันทึกเข้าสู่ระบบ
-    async syncWithGoogleSheet(sheetUrl) {
-        if (!sheetUrl) return { success: false, error: "กรุณาระบุ URL ของ Google Sheet" };
+    async syncWithGoogleSheet(sheetUrl = WEB_APP_URL) {
+        if (!sheetUrl) sheetUrl = WEB_APP_URL;
         
+        // ตรวจสอบว่ารูปแแบบเป็น Google Apps Script Web App หรือไม่
+        if (sheetUrl.includes("script.google.com")) {
+            try {
+                const response = await fetch(sheetUrl);
+                if (!response.ok) {
+                    throw new Error("ดาวน์โหลดข้อมูลล้มเหลว ตรวจสอบสถานะและสิทธิ์การแชร์ของ Web App");
+                }
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || "เกิดข้อผิดพลาดในการดึงข้อมูลจากสคริปต์");
+                }
+                
+                if (!result.students || result.students.length === 0) {
+                    throw new Error("ไม่พบข้อมูลนักเรียนส่งกลับมาจากสคริปต์");
+                }
+                
+                // นำเข้าข้อมูลใหม่เข้าสู่ Database และเซฟลง localStorage
+                this.students = result.students;
+                this.saveDatabase();
+                
+                // บันทึก URL เก็บไว้สำหรับการซิงค์ครั้งถัดไป
+                localStorage.setItem("classroom_google_sheet_url", sheetUrl);
+                
+                return { success: true, count: result.students.length };
+            } catch (e) {
+                console.error("Sync Web App error:", e);
+                return { success: false, error: e.message };
+            }
+        }
+
+        // หากไม่ใช่สคริปต์ จะทำการดาวน์โหลดเป็น CSV และแปลง
         const csvUrl = this.getCsvUrl(sheetUrl);
         if (!csvUrl) return { success: false, error: "ลิงก์ Google Sheets ไม่ถูกต้อง กรุณาใช้ลิงก์จากแถบเบราว์เซอร์ของชีตของคุณ" };
 
@@ -279,6 +277,31 @@ class ClassroomDatabase {
             console.error("Sync error:", e);
             return { success: false, error: e.message };
         }
+    }
+
+    // อัปเดตสถานะการจ่ายเงินไปยัง Google Apps Script Web App (ถ้าเปิดใช้งาน)
+    async updatePaymentStatusRemote(studentId, month, isPaid) {
+        // อัปเดตข้อมูล Local ก่อนเพื่อให้ UI อัปเดตทันที
+        this.updatePaymentStatus(studentId, month, isPaid);
+        
+        const sheetUrl = localStorage.getItem("classroom_google_sheet_url");
+        if (sheetUrl && sheetUrl.includes("script.google.com")) {
+            try {
+                // ส่งคำร้องขอ GET ไปยัง Web App เพื่ออัปเดตข้อมูล
+                const updateUrl = `${sheetUrl}?action=update&id=${encodeURIComponent(studentId)}&month=${encodeURIComponent(month)}&isPaid=${isPaid}`;
+                const response = await fetch(updateUrl);
+                if (!response.ok) {
+                    throw new Error("เครือข่ายตอบกลับไม่ถูกต้อง สถานะ: " + response.status);
+                }
+                const result = await response.json();
+                return result;
+            } catch (e) {
+                console.error("Failed to update remote sheet:", e);
+                return { success: false, error: e.message };
+            }
+        }
+        // หากไม่มีการตั้งค่าหรือไม่ได้ใช้ Web App ให้สำเร็จ (เฉพาะ Local)
+        return { success: true, localOnly: true };
     }
 }
 
