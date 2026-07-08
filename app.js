@@ -195,7 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================
     // 3. ระบบ Authentication (Login / Logout)
     // ==========================================
-    loginForm.addEventListener("submit", (e) => {
+    loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const idVal = studentIdInput.value.trim();
 
@@ -219,7 +219,36 @@ document.addEventListener("DOMContentLoaded", () => {
         // ค้นหาใน Database
         const student = window.classroomDb.findStudentById(idVal);
         if (student) {
-            loginAsStudent(student);
+            // ป้องกันการสวมรอย: ตรวจสอบ/ผูกมัด LINE ID กับรหัสนักศึกษา
+            if (lineProfile && lineProfile.userId) {
+                showToast("กำลังตรวจสอบข้อมูลความปลอดภัยบัญชี LINE...", "info");
+                
+                // แสดงสถานะการโหลด
+                const submitBtn = loginForm.querySelector("button[type='submit']");
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = "กำลังตรวจสอบ...";
+                
+                try {
+                    const bindResult = await window.classroomDb.bindLineIdRemote(idVal, lineProfile.userId);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    
+                    if (bindResult.success) {
+                        student.lineId = lineProfile.userId;
+                        loginAsStudent(student);
+                    } else {
+                        showToast(bindResult.error || "รหัสนักศึกษานี้ถูกลงทะเบียนด้วยบัญชี LINE อื่นแล้ว!", "danger");
+                    }
+                } catch (err) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    showToast("เกิดข้อผิดพลาดในการยืนยันตัวตน LINE ID: " + err.message, "danger");
+                }
+            } else {
+                // หากไม่ได้ผ่านหน้า LINE Login (เช่น กดข้ามกรณี Error) ให้ล็อกอินปกติ
+                loginAsStudent(student);
+            }
         } else {
             showToast("ไม่พบรหัสนักศึกษานี้ในระบบ! กรุณาตรวจสอบรหัสอีกครั้ง", "danger");
         }

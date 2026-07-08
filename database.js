@@ -1,7 +1,7 @@
 // database.js - ฐานข้อมูลของนักเรียนและสถานะการจ่ายเงิน ดึงจาก Google Sheets
 // ข้อมูลนี้ถูกเก็บไว้ใน localStorage เพื่อประหยัดสถานะเมื่อรีเฟรชหน้าจอ
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzyLZTH43Xv2y_PLg4qIPU13q3u15oT8iuyd9-7UzsqCLW2U2oAR7QNFkbtnS9bAOyOsw/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxcSDYBL31k5oWWLLlVbticQw_1IepUXPS_6YXqwMrAob9WHNEnh_KpE7PhRf7jBvmr-w/exec";
 const STORAGE_KEY = "classroom_payment_db_v3";
 const MONTH_NAMES = {
     "June": "มิถุนายน",
@@ -27,7 +27,8 @@ class ClassroomDatabase {
         if (savedUrl && (
             savedUrl.includes("AKfycby8_S081Npo5vqtrLAFpWdcKSPSCZeYI8Ttx-HA7lMMRmpdBnUTdKzxuOV5azAldAhs") ||
             savedUrl.includes("AKfycbwAWJRG_Lroxn4HsVeNR1_weAylCgbO_l1gZuSMqq-HYGYAmNC5C4N6D8dVU9VcoARO") ||
-            savedUrl.includes("AKfycbweU-0aOR-GHal1ZwSvG2b-Zt_kJ24Cyqma9cj4cJ5bNb5TIwXT7WiU-weawrhSDUCL")
+            savedUrl.includes("AKfycbweU-0aOR-GHal1ZwSvG2b-Zt_kJ24Cyqma9cj4cJ5bNb5TIwXT7WiU-weawrhSDUCL") ||
+            savedUrl.includes("AKfycbzyLZTH43Xv2y_PLg4qIPU13q3u15oT8iuyd9-7UzsqCLW2U2oAR7QNFkbtnS9bAOyOsw")
         )) {
             localStorage.setItem("classroom_google_sheet_url", WEB_APP_URL);
         }
@@ -207,6 +208,7 @@ class ClassroomDatabase {
             const headers = rows[0].map(h => h.toLowerCase().trim());
             let idColIndex = headers.findIndex(h => h.includes("รหัส") || h.includes("id"));
             let nameColIndex = headers.findIndex(h => h.includes("ชื่อ") || h.includes("name"));
+            let lineColIndex = headers.findIndex(h => h.includes("line") || h.includes("ไลน์"));
             
             // ใช้ค่าเริ่มต้นหากหาคอลัมน์ไม่เจอ
             if (idColIndex === -1) idColIndex = 0;
@@ -258,6 +260,7 @@ class ClassroomDatabase {
                 // ล้างอักขระคำพูดเดี่ยวหรือคู่ออก
                 const id = row[idColIndex].replace(/^["']|["']$/g, '').trim();
                 const name = row[nameColIndex].replace(/^["']|["']$/g, '').trim();
+                const lineId = lineColIndex !== -1 && lineColIndex < row.length ? row[lineColIndex].replace(/^["']|["']$/g, '').trim() : "";
                 if (!id || id.toLowerCase().includes("รหัส")) continue; // ข้ามแถวที่ไม่มีข้อมูลรหัส
 
                 const status = {};
@@ -280,7 +283,7 @@ class ClassroomDatabase {
                     }
                 });
 
-                newStudents.push({ id, name, status });
+                newStudents.push({ id, name, lineId, status });
             }
 
             if (newStudents.length === 0) {
@@ -323,6 +326,26 @@ class ClassroomDatabase {
             }
         }
         // หากไม่มีการตั้งค่าหรือไม่ได้ใช้ Web App ให้สำเร็จ (เฉพาะ Local)
+        return { success: true, localOnly: true };
+    }
+
+    // ส่งคำร้องขอผูกมัดหรือตรวจสอบ LINE ID กับรหัสนักศึกษาใน Google Sheet
+    async bindLineIdRemote(studentId, lineId) {
+        const sheetUrl = localStorage.getItem("classroom_google_sheet_url") || this.webAppUrl;
+        if (sheetUrl && sheetUrl.includes("script.google.com")) {
+            try {
+                const bindUrl = `${sheetUrl}?action=bind&id=${encodeURIComponent(studentId)}&lineId=${encodeURIComponent(lineId)}`;
+                const response = await fetch(bindUrl);
+                if (!response.ok) {
+                    throw new Error("เครือข่ายตอบกลับไม่ถูกต้อง สถานะ: " + response.status);
+                }
+                const result = await response.json();
+                return result;
+            } catch (e) {
+                console.error("Failed to bind/verify line id:", e);
+                return { success: false, error: e.message };
+            }
+        }
         return { success: true, localOnly: true };
     }
 }
