@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเก็บเงินห้องเรียน - Classroom Payment Tracker</title>
+    <!-- Meta tags for SEO & standard mobile presentation -->
+    <meta name="description" content="ระบบเว็บแอปพลิเคชันสำหรับตรวจสอบและจัดการค่าห้องเรียน ตรวจสอบการจ่ายเงินสแกนสลิปพร้อมเพย์และรายงานผล">
+    
+    <!-- Stylesheet link -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- HTML5 QR Code Scanner Library via CDN -->
+    <script src="https://unpkg.com/html5-qrcode" defer></script>
+    
+    <!-- Application Logic scripts (database first, then controller) -->
+    <script src="database.js" defer></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- App Header -->
+        <header class="app-header">
+            <div class="logo-section">
+                <div class="logo-icon">฿</div>
+                <div class="logo-text">
+                    <span class="text-gradient-neon">ClassPay</span>
+                    <span style="font-size:0.8rem; font-weight:normal; display:block; color:var(--text-muted); margin-top:-3px;">ระบบเก็บเงินห้อง</span>
+                </div>
+            </div>
+            <div class="nav-actions">
+                <div id="header-userinfo" style="display: none; align-items: center; gap: 0.5rem;">
+                    <!-- แสดงชื่อและข้อมูลผู้ใช้งานที่นี่หลังจาก Login -->
+                </div>
+                <button id="btn-logout" class="btn btn-secondary" style="display: none; padding: 0.5rem 1rem;">
+                    ออกจากระบบ ➔
+                </button>
+            </div>
+        </header>
+
+        <!-- ========================================== -->
+        <!-- VIEW 1: Login View                         -->
+        <!-- ========================================== -->
+        <main id="view-login" class="view-panel active">
+            <div class="login-container">
+                <div class="glass-card login-card">
+                    <div class="login-icon-large">🔑</div>
+                    <h2>เข้าสู่ระบบค่าห้อง</h2>
+                    <p>กรุณากรอกรหัสนักศึกษาของคุณเพื่อเข้าสู่ระบบ</p>
+                    
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="student-id-input">รหัสนักศึกษา</label>
+                            <input type="text" id="student-id-input" class="input-style" placeholder="ตัวอย่าง: 6509610111" autocomplete="off" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">เข้าสู่ระบบ ➔</button>
+                    </form>
+                    
+                    <div class="login-help-text">
+                        สำหรับผู้ดูแลระบบ? <a id="admin-toggle-link" class="admin-login-link">เข้าสู่ระบบแอดมิน</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ========================================== -->
+        <!-- VIEW 2: Student Dashboard View             -->
+        <!-- ========================================== -->
+        <main id="view-student" class="view-panel">
+            <div class="student-grid">
+                
+                <!-- คอลัมน์ซ้าย: โปรไฟล์และสถานะการจ่ายเงินรายเดือน -->
+                <section class="glass-card">
+                    <div class="profile-summary">
+                        <div id="student-avatar-letter" class="profile-avatar">S</div>
+                        <div class="profile-info">
+                            <h3 id="student-profile-name">นายสมชาย รักดี</h3>
+                            <p id="student-profile-id">รหัสนักศึกษา: 6509610111</p>
+                        </div>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+                        <h3 style="margin:0; font-family:var(--font-heading); font-size:1.2rem;">สถานะการจ่ายเงินรายเดือน</h3>
+                        <button id="btn-student-sync-gsheet" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; display: none; align-items: center; gap: 0.25rem;">
+                            🔄 ดึงข้อมูลล่าสุด
+                        </button>
+                    </div>
+                    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">อัตราค่าเก็บเงินห้อง: เดือนละ 100 บาท</p>
+                    
+                    <div id="month-checklist-container" class="month-checklist">
+                        <!-- รายการแต่ละเดือนจะถูกสร้างขึ้นด้วย JavaScript -->
+                    </div>
+                </section>
+                
+                <!-- คอลัมน์ขวา: กล่องแนะนำและคู่มือการจ่ายเงิน -->
+                <section class="glass-card scanner-card">
+                    <div class="scanner-title-area">
+                        <h3 style="font-family:var(--font-heading); font-size:1.2rem;">คู่มือการชำระเงินแสนสะดวก</h3>
+                        <p class="scanner-desc">ชำระเงินได้ทันทีโดยการสแกน PromptPay และยืนยันการโอนด้วยการสแกน QR Code บนสลิปธนาคาร</p>
+                    </div>
+
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-light); border-radius:12px; padding:1.25rem; margin-bottom:1.5rem;">
+                        <h4 style="color:var(--accent); margin-bottom:0.5rem; font-size:0.95rem;">ขั้นตอนการจ่ายเงิน:</h4>
+                        <ol style="margin-left:1.25rem; font-size:0.85rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.4rem;">
+                            <li>คลิกปุ่ม <strong style="color:var(--text-main);">"ชำระเงิน"</strong> ที่เดือนที่ยังไม่ได้จ่าย</li>
+                            <li>บันทึกภาพหน้าจอหรือนำโทรศัพท์สแกน QR Code โอนเงิน 100 บาท</li>
+                            <li>หลังจากสแกนโอนเงินสำเร็จในแอปธนาคารแล้ว ให้นำภาพสลิปที่ธนาคารบันทึกไว้ในเครื่องมาใช้</li>
+                            <li>สแกน QR Code บนสลิป หรืออัปโหลดรูปภาพสลิป เพื่ออัปเดตสถานะทันที!</li>
+                        </ol>
+                    </div>
+
+                    <div style="display:flex; justify-content:center; align-items:center; flex:1; flex-direction:column; padding:1rem; border:1px dashed var(--border-glow); border-radius:16px; background:rgba(139, 92, 246, 0.02);">
+                        <span style="font-size:2.5rem; margin-bottom:0.5rem; filter:drop-shadow(0 0 10px var(--primary-glow));">⚡</span>
+                        <p style="font-weight:600; font-size:0.95rem; text-align:center;">ตรวจสอบยอดด้วยระบบสแกนสลิปอัจฉริยะ</p>
+                        <p style="font-size:0.8rem; color:var(--text-muted); text-align:center; margin-top:0.25rem; max-width:80%;">ระบบจะดึงรหัสธุรกรรมจากสลิปธนาคารเพื่อยืนยันการรับเงินเข้าบัญชีห้องแบบเรียลไทม์</p>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+
+        <!-- ========================================== -->
+        <!-- VIEW 3: Admin Dashboard View               -->
+        <!-- ========================================== -->
+        <main id="view-admin" class="view-panel">
+            
+            <!-- ส่วนหัวการจัดการและเลือกเดือน -->
+            <div class="view-header-bar">
+                <div>
+                    <h2 style="font-size:1.75rem;">ระบบจัดการและตรวจสอบสำหรับผู้ดูแลห้องเรียน</h2>
+                    <p style="color:var(--text-muted); font-size:0.9rem;">ตรวจสอบรายชื่อการจ่ายเงินค่าห้องของเพื่อนในเซค</p>
+                </div>
+                
+                <div style="display:flex; align-items:center; gap:1rem;">
+                    <div class="select-wrapper">
+                        <select id="admin-month-select" class="select-style">
+                            <option value="June">มิถุนายน</option>
+                            <option value="July" selected>กรกฎาคม</option>
+                            <option value="August">สิงหาคม</option>
+                            <option value="September">กันยายน</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- กล่องสถิติการจ่ายเงินรายเดือน (Metrics) -->
+            <section class="admin-metrics">
+                <div class="glass-card metric-card">
+                    <div class="metric-icon blue">👥</div>
+                    <div class="metric-info">
+                        <span id="metric-total-paid" class="metric-value">0 / 0 คน</span>
+                        <span class="metric-label">จำนวนคนที่จ่ายแล้ว</span>
+                    </div>
+                </div>
+                <div class="glass-card metric-card">
+                    <div class="metric-icon green">💰</div>
+                    <div class="metric-info">
+                        <span id="metric-total-amount" class="metric-value">0 บาท</span>
+                        <span class="metric-label">เงินเก็บสะสมเดือนนี้</span>
+                    </div>
+                </div>
+                <div class="glass-card metric-card" style="position:relative; overflow:hidden;">
+                    <div class="metric-icon purple">📊</div>
+                    <div class="metric-info">
+                        <span id="metric-percent-text" class="metric-value">0% จ่ายแล้ว</span>
+                        <span class="metric-label">คิดเป็นสัดส่วนการชำระเงิน</span>
+                    </div>
+                    <!-- แถบ Progress ด้านล่างของการ์ด -->
+                    <div style="position:absolute; bottom:0; left:0; width:100%; height:4px; background:rgba(255,255,255,0.05);">
+                        <div id="admin-progress-fill" style="height:100%; width:0%; background:linear-gradient(90deg, var(--primary), var(--secondary)); transition:width 0.4s ease;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- แผงการจัดการ ตั้งค่าและค้นหาข้อมูล -->
+            <section class="glass-card" style="margin-bottom: 2rem;">
+                <h3 style="font-family:var(--font-heading); font-size:1.15rem; margin-bottom:1.25rem; display:flex; align-items:center; gap:0.5rem;">
+                    ⚙ ตั้งค่าและจัดการข้อมูล
+                </h3>
+                <div style="display:grid; grid-template-columns:1fr; gap:1.5rem; margin-bottom:1.5rem;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="admin-promptpay-input" style="font-size:0.85rem;">เบอร์ PromptPay สำหรับรับเงินห้อง (แก้ไขตรงนี้จะอัปเดต QR Code สำหรับจ่ายเงินทั้งหมด)</label>
+                        <input type="text" id="admin-promptpay-input" class="input-style" style="letter-spacing:0.1em; max-width:300px; font-size:0.95rem; padding:0.6rem 0.85rem;" placeholder="0812345678">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="admin-gsheet-input" style="font-size:0.85rem;">ลิงก์ Google Sheets สำหรับเชื่อมข้อมูลการชำระเงิน (ต้องตั้งค่าให้ 'ทุกคนที่มีลิงก์มีสิทธิ์อ่าน')</label>
+                        <div style="display:flex; gap:1rem; flex-wrap:wrap; max-width:800px;">
+                            <input type="text" id="admin-gsheet-input" class="input-style" style="flex:1; min-width:300px; font-size:0.95rem; padding:0.6rem 0.85rem;" placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing">
+                            <button id="btn-sync-gsheet" class="btn btn-primary" style="padding:0.6rem 1.2rem; display:inline-flex; align-items:center; gap:0.5rem; white-space:nowrap;">
+                                🔄 ซิงค์ข้อมูลชีต
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ส่วนข้อมูลหลักในตารางนักเรียน -->
+            <section class="glass-card table-card">
+                
+                <!-- แถบเครื่องมือจัดการตาราง ค้นหา และ ส่งออก -->
+                <div class="control-bar" style="padding: 1.5rem 1.5rem 1rem;">
+                    <div class="search-wrapper">
+                        <span class="search-icon-inside">🔍</span>
+                        <input type="text" id="search-input" class="search-input" placeholder="ค้นหาด้วยรหัสนักศึกษา หรือ ชื่อ-นามสกุล...">
+                    </div>
+                    <div class="admin-actions-group">
+                        <button id="btn-export-csv" class="btn btn-secondary">
+                            📥 ส่งออกรายงาน CSV
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>รหัสนักศึกษา</th>
+                                <th>ชื่อ-นามสกุล</th>
+                                <th style="width: 250px;">สถานะ (สลับเพื่ออัปเดต)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student-list-table-body">
+                            <!-- รายชื่อนักเรียนจะแสดงขึ้นที่นี่ผ่านการเรียกของ JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <!-- App Footer -->
+        <footer class="app-footer">
+            <div class="footer-credit">
+                ระบบจัดการเงินห้องเรียน พัฒนาด้วย <span>❤</span> โดย Antigravity
+            </div>
+            <div>&copy; 2026 Classroom Payment Tracker • ปลอดภัยและรวดเร็ว</div>
+        </footer>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL POPUP: PromptPay & Scanner Modal     -->
+    <!-- ========================================== -->
+    <div id="qr-modal" class="modal-backdrop">
+        <div class="modal-content">
+            
+            <div class="modal-header">
+                <h3 style="font-family:var(--font-heading); font-size:1.25rem;">
+                    สแกนชำระเงินค่าห้อง <br>
+                    <span id="modal-target-month" style="font-size:0.9rem; color:var(--accent); font-weight:normal;">ประจำเดือน...</span>
+                </h3>
+                <button id="btn-close-modal" class="modal-close">&times;</button>
+            </div>
+            
+            <!-- STEP 1: PromptPay QR Details -->
+            <div id="modal-step-pay" class="modal-step active">
+                <div class="pp-qr-container">
+                    <img class="pp-logo" src="https://promptpay.io/promptpay-logo.png" alt="PromptPay Logo">
+                    <img id="pp-qr-image" class="pp-qr-image" src="" alt="PromptPay QR Code">
+                </div>
+
+                <div class="pp-amount-highlight" id="pp-amount-text">100.00 บาท</div>
+                <div class="pp-meta-info" id="pp-target-text">พร้อมเพย์ห้อง: 0812345678</div>
+                <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem; max-width:85%; margin-inline:auto;">
+                    โอนเงินจำนวน 100.00 บาทถ้วน (ห้ามขาดห้ามเกินเพื่อให้ระบบสแกนสลิปตรวจสอบเจออัตโนมัติ)
+                </p>
+                
+                <button id="btn-go-to-verify" class="btn btn-primary" style="margin-top:1.5rem; width:100%;">
+                    ฉันโอนเงินเรียบร้อยแล้ว (ไปสแกนสลิป) ➔
+                </button>
+            </div>
+
+            <!-- STEP 2: Scanner & Slip Verification -->
+            <div id="modal-step-verify" class="modal-step">
+                <!-- ส่วนกล่องตรวจจับสลิป -->
+                <div style="text-align:left; margin-bottom:1rem;">
+                    <h4 style="font-family:var(--font-heading); font-size:1rem; margin-bottom:0.25rem;">ยืนยันยอดด้วยการส่งสลิปธนาคาร</h4>
+                    <p style="color:var(--text-muted); font-size:0.8rem;">กรุณาสแกน QR Code บนสลิปธนาคารผ่านกล้อง หรืออัปโหลดรูปภาพสลิปที่ได้บันทึกไว้</p>
+                </div>
+
+                <!-- ช่องเปิดกล้อง / แสดงผลสแกนและผลการยืนยัน -->
+                <div id="scan-container" class="scan-container">
+                    <!-- เส้นยิงเลเซอร์แอนิเมชัน -->
+                    <div class="scan-laser"></div>
+                    
+                    <!-- ตัวอ่านกล้องของ html5-qrcode -->
+                    <div id="reader" style="width: 100%; height: 100%; border-radius:14px; overflow:hidden;"></div>
+                    
+                    <!-- Overlay สถานะการคำนวณและข้อความ -->
+                    <div id="verify-overlay" class="verify-overlay" style="display: none;">
+                        <div class="spinner"></div>
+                        <p style="font-weight:600;">กำลังตรวจสอบข้อมูลสลิป...</p>
+                    </div>
+                </div>
+
+                <!-- แผงควบคุมกล้อง / อัปโหลดรูปสลิป -->
+                <div class="scanner-control-btn-group">
+                    <button id="btn-start-camera" class="btn btn-primary">
+                        📷 เปิดกล้องสแกน
+                    </button>
+                    <button id="btn-upload-file" class="btn btn-secondary">
+                        📁 อัปโหลดภาพสลิป
+                    </button>
+                    <input type="file" id="slip-file-input" class="file-upload-input" accept="image/*">
+                </div>
+
+                <!-- หมายเหตุกรณีใช้สแกนเนอร์สำหรับทดสอบ -->
+                <p style="color:var(--text-muted); font-size:0.75rem; margin-top:1rem; line-height:1.3; text-align:left;">
+                    💡 <strong>เคล็ดลับสำหรับการทดสอบ:</strong> สามารถใช้กล้องสแกน <em>QR Code ใดๆ ก็ได้</em> หรืออัปโหลดรูปภาพที่มี QR Code ใดๆ ระบบจะจำลองการโอนสำเร็จให้ทันที
+                </p>
+                
+                <button id="btn-back-to-pay" class="btn btn-secondary" style="margin-top:1rem; width:100%; font-size:0.85rem; padding:0.5rem;">
+                    🠔 ย้อนกลับไปดู QR Code
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- ส่วนเก็บรายการแจ้งเตือนสไตล์ Toast -->
+    <div id="toast-container" class="toast-container"></div>
+
+</body>
+</html>
