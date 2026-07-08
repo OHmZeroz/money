@@ -10,6 +10,9 @@
     <!-- Stylesheet link -->
     <link rel="stylesheet" href="style.css">
     
+    <!-- LINE LIFF SDK via CDN -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
     <!-- HTML5 QR Code Scanner Library via CDN -->
     <script src="https://unpkg.com/html5-qrcode" defer></script>
     
@@ -40,9 +43,34 @@
         </header>
 
         <!-- ========================================== -->
+        <!-- VIEW 0: LINE Login View                    -->
+        <!-- ========================================== -->
+        <main id="view-line-login" class="view-panel active">
+            <div class="login-container">
+                <div class="glass-card login-card" style="text-align: center;">
+                    <div class="login-icon-large" style="background: rgba(6, 199, 85, 0.15); border-color: rgba(6, 199, 85, 0.3); display: flex; align-items: center; justify-content: center; margin-inline: auto;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" style="width: 50px; height: 50px; display: block;" alt="LINE Logo">
+                    </div>
+                    <h2>เข้าสู่ระบบด้วย LINE</h2>
+                    <p>กรุณายืนยันตัวตนผ่านแอปพลิเคชัน LINE ก่อนเข้าใช้งานระบบจ่ายเงิน</p>
+                    
+                    <div style="margin-top: 2rem;">
+                        <button id="btn-line-login" class="btn btn-primary" style="background: linear-gradient(135deg, #06C755 0%, #05B34C 100%); border: none; color: white; display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%; font-size: 1.1rem; padding: 0.75rem; font-weight: 600; box-shadow: 0 4px 15px rgba(6, 199, 85, 0.3); cursor: pointer; border-radius: 8px;">
+                            💬 เข้าสู่ระบบด้วย LINE
+                        </button>
+                    </div>
+                    
+                    <div class="login-help-text" style="margin-top: 1.5rem;">
+                        <span>🔒 มั่นใจได้ ปลอดภัยผ่านระบบยืนยันตัวตนของ LINE</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ========================================== -->
         <!-- VIEW 1: Login View                         -->
         <!-- ========================================== -->
-        <main id="view-login" class="view-panel active">
+        <main id="view-login" class="view-panel">
             <div class="login-container">
                 <div class="glass-card login-card">
                     <div class="login-icon-large">🔑</div>
@@ -139,6 +167,13 @@
                             <option value="July" selected>กรกฎาคม</option>
                             <option value="August">สิงหาคม</option>
                             <option value="September">กันยายน</option>
+                            <option value="October">ตุลาคม</option>
+                            <option value="November">พฤศจิกายน</option>
+                            <option value="December">ธันวาคม</option>
+                            <option value="January">มกราคม</option>
+                            <option value="February">กุมภาพันธ์</option>
+                            <option value="March">มีนาคม</option>
+                            <option value="April">เมษายน</option>
                         </select>
                     </div>
                 </div>

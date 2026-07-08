@@ -1,13 +1,20 @@
 // database.js - ฐานข้อมูลของนักเรียนและสถานะการจ่ายเงิน ดึงจาก Google Sheets
 // ข้อมูลนี้ถูกเก็บไว้ใน localStorage เพื่อประหยัดสถานะเมื่อรีเฟรชหน้าจอ
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbweU-0aOR-GHal1ZwSvG2b-Zt_kJ24Cyqma9cj4cJ5bNb5TIwXT7WiU-weawrhSDUCL/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzyLZTH43Xv2y_PLg4qIPU13q3u15oT8iuyd9-7UzsqCLW2U2oAR7QNFkbtnS9bAOyOsw/exec";
 const STORAGE_KEY = "classroom_payment_db_v3";
 const MONTH_NAMES = {
     "June": "มิถุนายน",
     "July": "กรกฎาคม",
     "August": "สิงหาคม",
-    "September": "กันยายน"
+    "September": "กันยายน",
+    "October": "ตุลาคม",
+    "November": "พฤศจิกายน",
+    "December": "ธันวาคม",
+    "January": "มกราคม",
+    "February": "กุมภาพันธ์",
+    "March": "มีนาคม",
+    "April": "เมษายน"
 };
 
 class ClassroomDatabase {
@@ -19,7 +26,8 @@ class ClassroomDatabase {
         const savedUrl = localStorage.getItem("classroom_google_sheet_url");
         if (savedUrl && (
             savedUrl.includes("AKfycby8_S081Npo5vqtrLAFpWdcKSPSCZeYI8Ttx-HA7lMMRmpdBnUTdKzxuOV5azAldAhs") ||
-            savedUrl.includes("AKfycbwAWJRG_Lroxn4HsVeNR1_weAylCgbO_l1gZuSMqq-HYGYAmNC5C4N6D8dVU9VcoARO")
+            savedUrl.includes("AKfycbwAWJRG_Lroxn4HsVeNR1_weAylCgbO_l1gZuSMqq-HYGYAmNC5C4N6D8dVU9VcoARO") ||
+            savedUrl.includes("AKfycbweU-0aOR-GHal1ZwSvG2b-Zt_kJ24Cyqma9cj4cJ5bNb5TIwXT7WiU-weawrhSDUCL")
         )) {
             localStorage.setItem("classroom_google_sheet_url", WEB_APP_URL);
         }
@@ -212,7 +220,21 @@ class ClassroomDatabase {
                 "august": "August",
                 "สิงหาคม": "August",
                 "september": "September",
-                "กันยายน": "September"
+                "กันยายน": "September",
+                "october": "October",
+                "ตุลาคม": "October",
+                "november": "November",
+                "พฤศจิกายน": "November",
+                "december": "December",
+                "ธันวาคม": "December",
+                "january": "January",
+                "มกราคม": "January",
+                "february": "February",
+                "กุมภาพันธ์": "February",
+                "march": "March",
+                "มีนาคม": "March",
+                "april": "April",
+                "เมษายน": "April"
             };
 
             // ค้นหาดัชนีคอลัมน์ของแต่ละเดือน
@@ -240,7 +262,7 @@ class ClassroomDatabase {
 
                 const status = {};
                 // ตั้งค่าเริ่มต้นของทุกเดือนเป็น false
-                ["June", "July", "August", "September"].forEach(m => {
+                ["June", "July", "August", "September", "October", "November", "December", "January", "February", "March", "April"].forEach(m => {
                     status[m] = false;
                 });
 

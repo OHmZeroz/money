@@ -17,10 +17,57 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ลิงก์ DOM Elements หลัก
     const views = {
+        lineLogin: document.getElementById("view-line-login"),
         login: document.getElementById("view-login"),
         student: document.getElementById("view-student"),
         admin: document.getElementById("view-admin")
     };
+
+    // ==========================================
+    // 0. ระบบ LINE Login (LIFF Integration)
+    // ==========================================
+    const btnLineLogin = document.getElementById("btn-line-login");
+    let lineProfile = null;
+
+    async function initLineLiff() {
+        const liffId = "2010646520-XCziyLXS";
+        if (typeof liff === "undefined") {
+            console.warn("LINE LIFF SDK is not loaded.");
+            return;
+        }
+
+        try {
+            await liff.init({ liffId: liffId });
+            if (liff.isLoggedIn()) {
+                lineProfile = await liff.getProfile();
+                console.log("LINE Profile loaded:", lineProfile);
+                
+                // ถ้ายืนยันตัวตน LINE ผ่านแล้ว ให้ข้ามหน้า LINE Login ไปหน้ากรอกรหัสประจำตัวทันที
+                showView("login");
+                
+                // อัปเดตข้อมูล UI เล็กน้อย
+                const loginDesc = document.querySelector("#view-login p");
+                if (loginDesc) {
+                    loginDesc.innerHTML = `ล็อกอิน LINE สำเร็จ: <strong>${lineProfile.displayName}</strong><br>กรุณากรอกรหัสนักศึกษาของคุณเพื่อยืนยันตัวตน`;
+                }
+            } else {
+                showView("lineLogin");
+            }
+        } catch (err) {
+            console.error("LIFF Init error:", err);
+            // กรณีเกิดความผิดพลาด (เช่น เปิดใช้งาน localhost แบบออฟไลน์) ให้ข้ามไปหน้า Login ปกติได้
+            showView("login");
+        }
+    }
+
+    if (btnLineLogin) {
+        btnLineLogin.addEventListener("click", () => {
+            liff.login();
+        });
+    }
+
+    // เรียกเริ่มระบบ LIFF
+    initLineLiff();
 
     // ปุ่มสลับหน้า/เข้าสู่ระบบ
     const loginForm = document.getElementById("login-form");
@@ -213,7 +260,14 @@ document.addEventListener("DOMContentLoaded", () => {
         state.currentUser = null;
         state.isAdmin = false;
         showToast("ออกจากระบบเรียบร้อยแล้ว", "warning");
-        showView("login");
+        
+        // ล็อกเอาต์จาก LINE LIFF ด้วยหากล็อกอินไว้
+        if (typeof liff !== "undefined" && liff.isLoggedIn()) {
+            liff.logout();
+            showView("lineLogin");
+        } else {
+            showView("login");
+        }
     });
 
     // ==========================================
