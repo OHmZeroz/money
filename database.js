@@ -334,7 +334,7 @@ class ClassroomDatabase {
         // อัปเดตข้อมูล Local ก่อนเพื่อให้ UI อัปเดตทันที
         this.updatePaymentStatus(studentId, month, isPaid);
         
-        const sheetUrl = localStorage.getItem("classroom_google_sheet_url");
+        const sheetUrl = localStorage.getItem("classroom_google_sheet_url") || this.webAppUrl;
         if (sheetUrl && sheetUrl.includes("script.google.com")) {
             try {
                 // ส่งคำร้องขอ GET ไปยัง Web App เพื่ออัปเดตข้อมูล
