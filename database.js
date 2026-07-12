@@ -1,10 +1,9 @@
 // database.js - ฐานข้อมูลของนักเรียนและสถานะการจ่ายเงิน ดึงจาก Google Sheets
 // ข้อมูลนี้ถูกเก็บไว้ใน localStorage เพื่อประหยัดสถานะเมื่อรีเฟรชหน้าจอ
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxcSDYBL31k5oWWLLlVbticQw_1IepUXPS_6YXqwMrAob9WHNEnh_KpE7PhRf7jBvmr-w/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwuC5v_G7qOUegO5ZPPGGBMzBrjP6XueuHsiBeTqJAfnjyxQFZdxhp0AxemPG4Ru8q7OA/exec";
 const STORAGE_KEY = "classroom_payment_db_v3";
 const MONTH_NAMES = {
-    "June": "มิถุนายน",
     "July": "กรกฎาคม",
     "August": "สิงหาคม",
     "September": "กันยายน",
@@ -24,13 +23,23 @@ class ClassroomDatabase {
         
         // ไมเกรตลิงก์สคริปต์เก่าไปยังลิงก์ใหม่โดยอัตโนมัติบนเบราว์เซอร์ของผู้ใช้
         const savedUrl = localStorage.getItem("classroom_google_sheet_url");
+        let urlChanged = false;
+        
         if (savedUrl && (
             savedUrl.includes("AKfycby8_S081Npo5vqtrLAFpWdcKSPSCZeYI8Ttx-HA7lMMRmpdBnUTdKzxuOV5azAldAhs") ||
             savedUrl.includes("AKfycbwAWJRG_Lroxn4HsVeNR1_weAylCgbO_l1gZuSMqq-HYGYAmNC5C4N6D8dVU9VcoARO") ||
             savedUrl.includes("AKfycbweU-0aOR-GHal1ZwSvG2b-Zt_kJ24Cyqma9cj4cJ5bNb5TIwXT7WiU-weawrhSDUCL") ||
-            savedUrl.includes("AKfycbzyLZTH43Xv2y_PLg4qIPU13q3u15oT8iuyd9-7UzsqCLW2U2oAR7QNFkbtnS9bAOyOsw")
+            savedUrl.includes("AKfycbzyLZTH43Xv2y_PLg4qIPU13q3u15oT8iuyd9-7UzsqCLW2U2oAR7QNFkbtnS9bAOyOsw") ||
+            savedUrl.includes("AKfycbxcSDYBL31k5oWWLLlVbticQw_1IepUXPS_6YXqwMrAob9WHNEnh_KpE7PhRf7jBvmr-w") ||
+            savedUrl.includes("AKfycbzhEbPctAzmAqas4cnZ04s8EhBw5Mr_nCP0n89KPnABlfBqpiV8t0odbDLIeuvP7nu2CA")
         )) {
             localStorage.setItem("classroom_google_sheet_url", WEB_APP_URL);
+            urlChanged = true;
+        }
+        
+        // หากลิงก์ที่ถูกเซฟต่างจาก WEB_APP_URL ปัจจุบัน ให้ล้างแคชข้อมูลเก่าออกด้วยเพื่อดึงข้อมูลใหม่ที่ตรงกับชีตล่าสุด
+        if (urlChanged || (savedUrl && savedUrl !== WEB_APP_URL)) {
+            localStorage.removeItem(STORAGE_KEY);
         }
         
         this.loadDatabase();
@@ -215,8 +224,6 @@ class ClassroomDatabase {
             if (nameColIndex === -1) nameColIndex = 1;
 
             const monthMappings = {
-                "june": "June",
-                "มิถุนายน": "June",
                 "july": "July",
                 "กรกฎาคม": "July",
                 "august": "August",
@@ -265,7 +272,7 @@ class ClassroomDatabase {
 
                 const status = {};
                 // ตั้งค่าเริ่มต้นของทุกเดือนเป็น false
-                ["June", "July", "August", "September", "October", "November", "December", "January", "February", "March", "April"].forEach(m => {
+                ["July", "August", "September", "October", "November", "December", "January", "February", "March", "April"].forEach(m => {
                     status[m] = false;
                 });
 
