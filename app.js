@@ -82,6 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const ppQrImage = document.getElementById("pp-qr-image");
     const ppAmountText = document.getElementById("pp-amount-text");
     const ppTargetText = document.getElementById("pp-target-text");
+    const ppNoteText = document.getElementById("pp-note-text");
     const modalTargetMonthText = document.getElementById("modal-target-month");
     
     // Modal Step Elements
@@ -496,6 +497,14 @@ document.addEventListener("DOMContentLoaded", () => {
         // สร้าง Dynamic PromptPay QR Code Image ผ่าน promptpay.io API
         const qrUrl = `https://promptpay.io/${promptpayNum}/100.png`;
         ppQrImage.src = qrUrl;
+        
+        // แสดงคำแนะนำให้บันทึกชื่อผู้โอนในแอปธนาคาร
+        if (state.currentUser && state.currentUser.name) {
+            ppNoteText.style.display = "block";
+            ppNoteText.textContent = `📝 แนะนำใส่บันทึกช่วยจำ: ค่าห้องของ ${state.currentUser.name}`;
+        } else {
+            ppNoteText.style.display = "none";
+        }
         
         // รีเซ็ตหน้าแรกและหน้าสแกนสลิปใน Modal
         modalStepPay.classList.add("active");
