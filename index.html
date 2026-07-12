@@ -175,6 +175,9 @@
                             <option value="April">เมษายน</option>
                         </select>
                     </div>
+                    <button id="btn-admin-lock-month" class="btn" style="padding:0.6rem 1.15rem; display:inline-flex; align-items:center; gap:0.4rem; font-weight:600; font-size:0.85rem; border-radius:12px; cursor:pointer; transition:all 0.3s ease;">
+                        🔓 เปิดรับชำระเงินอยู่
+                    </button>
                 </div>
             </div>
 
@@ -299,59 +302,11 @@
                     📝 แนะนำใส่บันทึกช่วยจำ: ค่าห้องของ...
                 </p>
                 <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem; max-width:85%; margin-inline:auto;">
-                    โอนเงินจำนวน 100.00 บาทถ้วน (ห้ามขาดห้ามเกินเพื่อให้ระบบสแกนสลิปตรวจสอบเจออัตโนมัติ)
+                    โอนเงินจำนวน 100.00 บาทถ้วน แล้วกดปุ่มด้านล่างเพื่อส่งข้อมูลแจ้งโอนเงินให้ผู้ดูแลระบบอนุมัติ
                 </p>
                 
-                <button id="btn-go-to-verify" class="btn btn-primary" style="margin-top:1.5rem; width:100%;">
-                    ฉันโอนเงินเรียบร้อยแล้ว (ไปสแกนสลิป) ➔
-                </button>
-            </div>
-
-            <!-- STEP 2: Scanner & Slip Verification -->
-            <div id="modal-step-verify" class="modal-step">
-                <!-- ส่วนกล่องตรวจจับสลิป -->
-                <div style="text-align:left; margin-bottom:1rem;">
-                    <h4 style="font-family:var(--font-heading); font-size:1rem; margin-bottom:0.25rem;">ยืนยันยอดด้วยการส่งสลิปธนาคาร</h4>
-                    <p style="color:var(--text-muted); font-size:0.8rem;">กรุณาสแกน QR Code บนสลิปธนาคารผ่านกล้อง หรืออัปโหลดรูปภาพสลิปที่ได้บันทึกไว้</p>
-                </div>
-
-                <!-- ช่องเปิดกล้อง / แสดงผลสแกนและผลการยืนยัน -->
-                <div id="scan-container" class="scan-container">
-                    <!-- เส้นยิงเลเซอร์แอนิเมชัน -->
-                    <div class="scan-laser"></div>
-                    
-                    <!-- ตัวอ่านกล้องของ html5-qrcode -->
-                    <div id="reader" style="width: 100%; height: 100%; border-radius:14px; overflow:hidden;"></div>
-                    
-                    <!-- Overlay สถานะการคำนวณและข้อความ -->
-                    <div id="verify-overlay" class="verify-overlay" style="display: none;">
-                        <div class="spinner"></div>
-                        <p style="font-weight:600;">กำลังตรวจสอบข้อมูลสลิป...</p>
-                    </div>
-                </div>
-
-                <!-- แผงควบคุมกล้อง / อัปโหลดรูปสลิป -->
-                <div class="scanner-control-btn-group">
-                    <button id="btn-start-camera" class="btn btn-primary">
-                        📷 เปิดกล้องสแกน
-                    </button>
-                    <button id="btn-upload-file" class="btn btn-secondary">
-                        📁 อัปโหลดภาพสลิป
-                    </button>
-                    <input type="file" id="slip-file-input" class="file-upload-input" accept="image/*">
-                </div>
-
-                <!-- หมายเหตุกรณีใช้สแกนเนอร์สำหรับทดสอบ -->
-                <p style="color:var(--text-muted); font-size:0.75rem; margin-top:1rem; line-height:1.3; text-align:left;">
-                    💡 <strong>เคล็ดลับสำหรับการทดสอบ:</strong> สามารถใช้กล้องสแกน <em>QR Code ใดๆ ก็ได้</em> หรืออัปโหลดรูปภาพที่มี QR Code ใดๆ ระบบจะจำลองการโอนสำเร็จให้ทันที
-                </p>
-                
-                <button id="btn-test-pay-success" class="btn btn-accent" style="margin-top:0.75rem; width:100%; font-size:0.85rem; padding:0.6rem; background:linear-gradient(90deg, #10b981, #059669); border:none; color:white; display:flex; align-items:center; justify-content:center; gap:0.5rem; font-weight:600; cursor:pointer;">
-                    🧪 [ทดสอบ] บันทึกว่าจ่ายเงินสำเร็จทันที
-                </button>
-                
-                <button id="btn-back-to-pay" class="btn btn-secondary" style="margin-top:1rem; width:100%; font-size:0.85rem; padding:0.5rem;">
-                    🠔 ย้อนกลับไปดู QR Code
+                <button id="btn-report-transfer" class="btn btn-primary" style="margin-top:1.5rem; width:100%;">
+                    📣 ฉันโอนเงินเรียบร้อยแล้ว (แจ้งแอดมิน) ➔
                 </button>
             </div>
             

@@ -85,7 +85,16 @@ class ClassroomDatabase {
 
     // อัปเดตสถานะการจ่ายเงินของนักศึกษา
     updatePaymentStatus(studentId, month, isPaid) {
-        const student = this.findStudentById(studentId);
+        let student = this.findStudentById(studentId);
+        if (!student && studentId === "CONFIG_LOCKED_MONTHS") {
+            student = {
+                id: "CONFIG_LOCKED_MONTHS",
+                name: "ตั้งค่าการล็อกเดือน",
+                lineId: "",
+                status: {}
+            };
+            this.students.push(student);
+        }
         if (student) {
             if (!student.status) {
                 student.status = {};
@@ -97,6 +106,12 @@ class ClassroomDatabase {
         return false;
     }
 
+    // ตรวจสอบว่าเดือนถูกล็อกการชำระเงินหรือไม่
+    isMonthLocked(month) {
+        const configRow = this.students.find(s => s.id === "CONFIG_LOCKED_MONTHS");
+        return configRow && configRow.status && configRow.status[month] === "locked";
+    }
+
     // นำเข้าข้อมูลรายชื่อนักศึกษาใหม่ (ใช้แทนข้อมูลเดิมทั้งหมด)
     importStudents(newStudentList) {
         this.students = newStudentList;
@@ -105,8 +120,9 @@ class ClassroomDatabase {
 
     // ฟังก์ชันคำนวณสถิติ
     getStats(month) {
-        const total = this.students.length;
-        const paidCount = this.students.filter(s => s.status && s.status[month]).length;
+        const realStudents = this.students.filter(s => s.id !== "CONFIG_LOCKED_MONTHS");
+        const total = realStudents.length;
+        const paidCount = realStudents.filter(s => s.status && (s.status[month] === "paid" || s.status[month] === true || s.status[month] === "true")).length;
         const unpaidCount = total - paidCount;
         const paidAmount = paidCount * 100;
         const unpaidAmount = unpaidCount * 100;
@@ -271,22 +287,24 @@ class ClassroomDatabase {
                 if (!id || id.toLowerCase().includes("รหัส")) continue; // ข้ามแถวที่ไม่มีข้อมูลรหัส
 
                 const status = {};
-                // ตั้งค่าเริ่มต้นของทุกเดือนเป็น false
+                // ตั้งค่าเริ่มต้นของทุกเดือนเป็น unpaid
                 ["July", "August", "September", "October", "November", "December", "January", "February", "March", "April"].forEach(m => {
-                    status[m] = false;
+                    status[m] = "unpaid";
                 });
 
                 // อ่านข้อมูลจากแต่ละคอลัมน์เดือน
                 Object.entries(monthColIndices).forEach(([monthName, idx]) => {
                     if (idx < row.length) {
                         const cellVal = row[idx].replace(/^["']|["']$/g, '').trim().toLowerCase();
-                        // ถือเป็นจ่ายแล้วถ้าเป็น TRUE, จ่ายแล้ว, 1, yes, checked
-                        const isPaid = cellVal === "true" || 
-                                       cellVal === "จ่ายแล้ว" || 
-                                       cellVal === "1" || 
-                                       cellVal === "yes" || 
-                                       cellVal === "checked";
-                        status[monthName] = isPaid;
+                        if (cellVal === "true" || cellVal === "จ่ายแล้ว" || cellVal === "1" || cellVal === "yes" || cellVal === "checked" || cellVal === "paid") {
+                            status[monthName] = "paid";
+                        } else if (cellVal === "pending" || cellVal === "รออนุมัติ" || cellVal === "waiting") {
+                            status[monthName] = "pending";
+                        } else if (cellVal === "locked" || cellVal === "ล็อก" || cellVal === "lock") {
+                            status[monthName] = "locked";
+                        } else {
+                            status[monthName] = "unpaid";
+                        }
                     }
                 });
 

@@ -87,18 +87,10 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Modal Step Elements
     const modalStepPay = document.getElementById("modal-step-pay");
-    const modalStepVerify = document.getElementById("modal-step-verify");
-    const btnGoToVerify = document.getElementById("btn-go-to-verify");
-    const btnBackToPay = document.getElementById("btn-back-to-pay");
-
-    // ระบบสแกนสลิป
-    const btnStartCamera = document.getElementById("btn-start-camera");
-    const btnUploadFile = document.getElementById("btn-upload-file");
-    const btnTestPaySuccess = document.getElementById("btn-test-pay-success");
-    const slipFileInput = document.getElementById("slip-file-input");
-    const scanContainer = document.getElementById("scan-container");
-    const verifyOverlay = document.getElementById("verify-overlay");
-    const html5QrCodeScanner = new Html5Qrcode("reader");
+    const btnReportTransfer = document.getElementById("btn-report-transfer");
+    
+    // ตั้งค่าหน้าจอ Admin
+    const btnAdminLockMonth = document.getElementById("btn-admin-lock-month");
 
     // ส่วนแสดงผลหน้าจอของนักเรียน
     const studentProfileName = document.getElementById("student-profile-name");
@@ -430,7 +422,8 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // วนลูปเดือนทั้งหมด
         Object.entries(MONTH_NAMES).forEach(([key, nameTh]) => {
-            const isPaid = currentStudentFresh.status[key];
+            const status = currentStudentFresh.status[key] || "unpaid";
+            const isLocked = dbInstance.isMonthLocked(key);
             
             const monthItem = document.createElement("div");
             monthItem.className = "month-item";
@@ -438,26 +431,43 @@ document.addEventListener("DOMContentLoaded", () => {
             let statusBadge = "";
             let actionBtn = "";
             
-            if (isPaid) {
+            if (status === "paid" || status === true || status === "true") {
                 statusBadge = `
                     <span class="status-badge paid">
                         <span class="pulse-dot"></span>
                         จ่ายแล้ว
                     </span>
                 `;
-                actionBtn = `<span style="color:var(--success); font-weight:600; font-size:0.9rem;">ขอบคุณสำหรับค่าห้องเรียบร้อย</span>`;
-            } else {
+                actionBtn = `<span style="color:var(--success); font-weight:600; font-size:0.9rem;">ชำระเงินเสร็จสิ้น ขอบคุณครับ</span>`;
+            } else if (status === "pending" || status === "waiting") {
                 statusBadge = `
-                    <span class="status-badge unpaid">
-                        <span class="pulse-dot"></span>
-                        ยังไม่ได้จ่าย
+                    <span class="status-badge pending" style="background:#eab308; border-color:#f59e0b; color:#fff; display:inline-flex; align-items:center; gap:0.25rem;">
+                        <span class="pulse-dot" style="background:#fff;"></span>
+                        รออนุมัติ
                     </span>
                 `;
-                actionBtn = `
-                    <button class="btn btn-accent btn-pay-trigger" data-month="${key}">
-                        ชำระเงิน 100.-
-                    </button>
-                `;
+                actionBtn = `<span style="color:#eab308; font-weight:600; font-size:0.9rem;">แจ้งโอนแล้ว รอแอดมินอนุมัติ...</span>`;
+            } else {
+                if (isLocked) {
+                    statusBadge = `
+                        <span class="status-badge locked" style="background:#4b5563; border-color:#374151; color:#d1d5db; display:inline-flex; align-items:center; gap:0.25rem;">
+                            🔒 ล็อกชำระ
+                        </span>
+                    `;
+                    actionBtn = `<span style="color:#6b7280; font-weight:600; font-size:0.9rem;">ปิดรับชำระเงิน</span>`;
+                } else {
+                    statusBadge = `
+                        <span class="status-badge unpaid">
+                            <span class="pulse-dot"></span>
+                            ยังไม่ได้จ่าย
+                        </span>
+                    `;
+                    actionBtn = `
+                        <button class="btn btn-accent btn-pay-trigger" data-month="${key}">
+                            ชำระเงิน 100.-
+                        </button>
+                    `;
+                }
             }
 
             monthItem.innerHTML = `
@@ -506,21 +516,15 @@ document.addEventListener("DOMContentLoaded", () => {
             ppNoteText.style.display = "none";
         }
         
-        // รีเซ็ตหน้าแรกและหน้าสแกนสลิปใน Modal
+        // รีเซ็ตหน้าแรกใน Modal
         modalStepPay.classList.add("active");
-        modalStepVerify.classList.remove("active");
         
         // แสดง Modal
         qrModal.classList.add("show");
-        
-        // รีเซ็ตการแจ้งเตือนและการจำลองการสแกนในกล่องอัปโหลด
-        verifyOverlay.style.display = "none";
-        scanContainer.classList.remove("active-scanning");
     }
 
     function closeModal() {
         qrModal.classList.remove("show");
-        stopQRScanner();
     }
 
     btnCloseModal.addEventListener("click", closeModal);
@@ -528,180 +532,26 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.target === qrModal) closeModal();
     });
 
-    // นำทางไปยังส่วนสแกนสลิป (Step 2)
-    btnGoToVerify.addEventListener("click", () => {
-        modalStepPay.classList.remove("active");
-        modalStepVerify.classList.add("active");
-    });
-
-    // ย้อนกลับไปหน้าข้อมูลการชำระเงิน (Step 1) และหยุดกล้อง
-    btnBackToPay.addEventListener("click", () => {
-        stopQRScanner();
-        modalStepVerify.classList.remove("active");
-        modalStepPay.classList.add("active");
-    });
-
     // ==========================================
-    // 6. ระบบแสกน/อัปโหลดสลิปตรวจสอบ QR Code
+    // 6. ระบบรายงานการโอนเงินของนักศึกษา (Report Transfer)
     // ==========================================
-    
-    // เริ่มใช้งานกล้องสำหรับสแกน QR Code
-    btnStartCamera.addEventListener("click", () => {
-        scanContainer.classList.add("active-scanning");
-        verifyOverlay.style.display = "none";
-        
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-        
-        html5QrCodeScanner.start(
-            { facingMode: "environment" }, 
-            config, 
-            (decodedText, decodedResult) => {
-                // เจอ QR Code
-                stopQRScanner();
-                processDecodedSlipQR(decodedText);
-            },
-            (errorMessage) => {
-                // ค้นหา QR Code ต่อไป (ไม่พ่น log กวนหน้าจอ)
-            }
-        ).catch(err => {
-            console.error("Camera startup error: ", err);
-            showToast("ไม่สามารถเปิดใช้งานกล้องได้ กรุณาให้สิทธิ์เข้าถึงกล้อง หรืออัปโหลดไฟล์สลิปแทน", "danger");
-            scanContainer.classList.remove("active-scanning");
-        });
-    });
-
-    // หยุดใช้กล้องสแกนเนอร์
-    function stopQRScanner() {
-        if (html5QrCodeScanner.isScanning) {
-            html5QrCodeScanner.stop().then(() => {
-                scanContainer.classList.remove("active-scanning");
-            }).catch(err => {
-                console.error("Failed to stop scanner: ", err);
-            });
-        }
-    }
-
-    // จัดการการอัปโหลดไฟล์รูปภาพสลิป
-    btnUploadFile.addEventListener("click", () => {
-        slipFileInput.click();
-    });
-
-    // ปุ่มจำลองการโอนสำเร็จสำหรับใช้ทดสอบ (Test Button)
-    if (btnTestPaySuccess) {
-        btnTestPaySuccess.addEventListener("click", () => {
-            stopQRScanner();
-            verifyOverlay.style.display = "flex";
-            verifyOverlay.innerHTML = `
-                <div class="spinner"></div>
-                <p style="font-weight:600;">กำลังจำลองการโอนเงินสำเร็จ...</p>
-            `;
+    if (btnReportTransfer) {
+        btnReportTransfer.addEventListener("click", () => {
+            const studentId = state.currentUser ? state.currentUser.id : null;
+            const month = state.targetPaymentMonth;
+            if (!studentId || !month) return;
             
-            // ดีเลย์ 1 วินาทีแล้วจำลองการชำระเงิน
-            setTimeout(() => {
-                simulateSlipVerification("MOCK-TEST-FAST-PAYMENT-BUTTON");
-            }, 1000);
-        });
-    }
-
-    slipFileInput.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        verifyOverlay.style.display = "flex";
-        verifyOverlay.innerHTML = `
-            <div class="spinner"></div>
-            <p style="font-weight:600;">กำลังประมวลผลไฟล์สลิป...</p>
-        `;
-
-        // ใช้ html5-qrcode สแกนจากไฟล์รูปภาพโดยตรง
-        html5QrCodeScanner.scanFile(file, true)
-            .then(decodedText => {
-                processDecodedSlipQR(decodedText);
-            })
-            .catch(err => {
-                console.warn("QR code not detected on image file", err);
-                
-                // สำหรับสลิปบางธนาคารที่ไม่มี QR หรือสแกนไม่ติด
-                // เพื่ออำนวยความสะดวกในเวอร์ชันจำลองให้สอดคล้องกับการใช้งานจริง
-                // ถ้าตรวจไม่พบ QR Code เราจะจำลองการสแกนผ่านหลังจากดีเลย์ 1.5 วินาที
-                // เพื่อให้งานนำเสนอไม่ติดขัดและสมบูรณ์
-                setTimeout(() => {
-                    simulateSlipVerification("MOCK-MANUAL-SLIP-BY-IMAGE");
-                }, 1500);
-            });
-    });
-
-    // ดำเนินการยืนยันสลิปที่ถอดรหัส QR ได้
-    function processDecodedSlipQR(decodedText) {
-        verifyOverlay.style.display = "flex";
-        verifyOverlay.innerHTML = `
-            <div class="spinner"></div>
-            <p style="font-weight:600;">ตรวจพบ QR สลิปโอนเงิน...</p>
-            <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">กำลังติดต่อระบบ API ตรวจสอบกับธนาคาร</p>
-        `;
-        
-        // หน่วงเวลาจำลองการติดต่อธนาคาร 2 วินาที
-        setTimeout(() => {
-            simulateSlipVerification(decodedText);
-        }, 2000);
-    }
-
-    // ระบบจำลองตรวจสอบสลิป (Mock Verification)
-    function simulateSlipVerification(qrData) {
-        const studentName = state.currentUser ? state.currentUser.name : "นักศึกษาทดสอบ";
-        const studentId = state.currentUser ? state.currentUser.id : "0000000000";
-        const month = state.targetPaymentMonth || "July";
-        
-        // ค้นหาชื่อย่อสำหรับจำลองสลิป
-        const shortName = studentName.replace("นาย", "").replace("นางสาว", "").trim();
-
-        // บันทึกสถานะการชำระเงินลงในระบบ
-        if (state.currentUser) {
-            window.classroomDb.updatePaymentStatusRemote(studentId, month, true).then(result => {
+            showToast("กำลังส่งข้อมูลแจ้งโอนเงินให้ผู้ดูแลระบบ...", "warning");
+            
+            window.classroomDb.updatePaymentStatusRemote(studentId, month, "pending").then(result => {
                 if (result.success) {
-                    if (!result.localOnly) {
-                        showToast("ส่งข้อมูลการชำระเงินไปยัง Google Sheet เรียบร้อย!", "success");
-                    }
+                    showToast(`แจ้งโอนเงินของเดือน ${MONTH_NAMES[month]} สำเร็จแล้ว! รอแอดมินอนุมัติการตรวจสอบ`, "success");
                 } else {
-                    showToast(`ส่งข้อมูลไปยังชีตล้มเหลว: ${result.error}`, "danger");
+                    showToast(`เกิดข้อผิดพลาดในการส่งข้อมูล: ${result.error}`, "danger");
                 }
+                closeModal();
+                renderStudentDashboard();
             });
-        }
-
-        // แสดงผลลัพธ์การตรวจสอบสลิปสำเร็จใน Overlay
-        verifyOverlay.innerHTML = `
-            <div class="verify-success-icon">✓</div>
-            <h4 style="color:var(--success); font-size:1.2rem; margin-bottom:0.25rem;">ยืนยันยอดเงินสำเร็จ!</h4>
-            <p style="font-size:0.95rem; margin-bottom:1rem;">ได้รับเงินค่าห้องจำนวน 100 บาท</p>
-            
-            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-light); border-radius:12px; padding:0.75rem; text-align:left; font-size:0.85rem; width:100%;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
-                    <span style="color:var(--text-muted);">ผู้โอน:</span>
-                    <span style="font-weight:500;">คุณ ${shortName}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
-                    <span style="color:var(--text-muted);">ธนาคาร:</span>
-                    <span>จำลอง API เช็คสลิป</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
-                    <span style="color:var(--text-muted);">จำนวนเงิน:</span>
-                    <span style="color:var(--success); font-weight:bold;">100.00 บาท</span>
-                </div>
-                <div style="display:flex; justify-content:space-between;">
-                    <span style="color:var(--text-muted);">รหัสอ้างอิง:</span>
-                    <span style="font-family:monospace; font-size:0.75rem;">TXN-${Math.floor(100000 + Math.random() * 900000)}</span>
-                </div>
-            </div>
-            
-            <button class="btn btn-primary" id="btn-finish-verify" style="margin-top:1.25rem; width:100%; padding:0.6rem;">
-                ตกลง
-            </button>
-        `;
-
-        document.getElementById("btn-finish-verify").addEventListener("click", () => {
-            closeModal();
-            renderStudentDashboard();
-            showToast(`ชำระเงินค่าห้องเดือน ${MONTH_NAMES[month]} สำเร็จเรียบร้อย!`, "success");
         });
     }
 
@@ -720,6 +570,41 @@ document.addEventListener("DOMContentLoaded", () => {
         renderAdminDashboard();
     });
 
+    // ปุ่มล็อก/ปลดล็อกเดือนชำระเงินสำหรับแอดมิน
+    if (btnAdminLockMonth) {
+        btnAdminLockMonth.addEventListener("click", () => {
+            const dbInstance = window.classroomDb;
+            const isCurrentlyLocked = dbInstance.isMonthLocked(state.selectedMonth);
+            const newLockState = !isCurrentlyLocked;
+            
+            showToast(`กำลังบันทึกการตั้งค่าล็อกเดือน...`, "warning");
+            
+            dbInstance.updatePaymentStatusRemote("CONFIG_LOCKED_MONTHS", state.selectedMonth, newLockState ? "locked" : "unpaid").then(result => {
+                if (result.success) {
+                    showToast(`ทำการ${newLockState ? "ล็อก" : "เปิดรับ"}การชำระเงินของเดือน ${MONTH_NAMES[state.selectedMonth]} เรียบร้อย!`, "success");
+                } else {
+                    showToast(`การตั้งค่าล้มเหลว: ${result.error}`, "danger");
+                }
+                renderAdminDashboard();
+            });
+        });
+    }
+
+    // ฟังก์ชันช่วยของแอดมินในการอัปเดตสถานะของนักเรียนแบบแมนนวล
+    function updateStudentStatusAdmin(studentId, newStatus, studentName) {
+        const dbInstance = window.classroomDb;
+        showToast(`กำลังบันทึกสถานะของ ${studentName}...`, "warning");
+        
+        dbInstance.updatePaymentStatusRemote(studentId, state.selectedMonth, newStatus).then(result => {
+            if (result.success) {
+                showToast(`อัปเดตสถานะของ ${studentName} เรียบร้อย!`, "success");
+            } else {
+                showToast(`อัปเดตบน Google Sheet ล้มเหลว: ${result.error}`, "danger");
+            }
+            renderAdminDashboard();
+        });
+    }
+
     // เปลี่ยนเบอร์พร้อมเพย์
     adminPromptpayInput.addEventListener("change", (e) => {
         const val = e.target.value.trim().replace(/-/g, "");
@@ -736,19 +621,37 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!state.isAdmin) return;
 
         const dbInstance = window.classroomDb;
-        const students = dbInstance.getAllStudents();
+        const students = dbInstance.getAllStudents().filter(s => s.id !== "CONFIG_LOCKED_MONTHS");
         const stats = dbInstance.getStats(state.selectedMonth);
 
-        // 1. อัปเดตการแสดงผลกล่องการ์ดตัวเลขสถิติ (Metrics)
+        // 1. อัปเดตการแสดงผลปุ่มล็อกเดือน
+        const isLocked = dbInstance.isMonthLocked(state.selectedMonth);
+        if (btnAdminLockMonth) {
+            if (isLocked) {
+                btnAdminLockMonth.innerHTML = "🔒 ปิดรับชำระเงินอยู่ (คลิกเพื่อเปิด)";
+                btnAdminLockMonth.style.background = "#ef4444";
+                btnAdminLockMonth.style.color = "white";
+                btnAdminLockMonth.style.border = "none";
+            } else {
+                btnAdminLockMonth.innerHTML = "🔓 เปิดรับชำระเงินอยู่ (คลิกเพื่อปิด)";
+                btnAdminLockMonth.style.background = "#10b981";
+                btnAdminLockMonth.style.color = "white";
+                btnAdminLockMonth.style.border = "none";
+            }
+        }
+
+        // 2. อัปเดตการแสดงผลกล่องการ์ดตัวเลขสถิติ (Metrics)
         metricTotalPaid.textContent = `${stats.paidCount} / ${stats.totalStudents} คน`;
         metricTotalAmount.textContent = `${stats.paidAmount.toLocaleString()} บาท`;
         metricPercentText.textContent = `${stats.percentPaid}% จ่ายแล้ว`;
         
         // จัดการ CSS ของ Progress Bar วงกลมหรือแถบ
         const progressFill = document.getElementById("admin-progress-fill");
-        progressFill.style.width = `${stats.percentPaid}%`;
+        if (progressFill) {
+            progressFill.style.width = `${stats.percentPaid}%`;
+        }
 
-        // 2. เรนเดอร์ตารางรายชื่อเพื่อนในชั้น
+        // 3. เรนเดอร์ตารางรายชื่อเพื่อนในชั้น
         studentListTableBody.innerHTML = "";
         
         const searchQuery = searchInput.value.toLowerCase().trim();
@@ -770,53 +673,63 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         filteredStudents.forEach(student => {
-            const isPaid = student.status[state.selectedMonth];
+            const status = student.status[state.selectedMonth] || "unpaid";
             const row = document.createElement("tr");
             
+            let statusControlHTML = "";
+            if (status === "paid" || status === true || status === "true") {
+                statusControlHTML = `
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                        <span class="status-badge paid" style="font-size:0.8rem; padding:0.25rem 0.5rem; border-radius:6px;">จ่ายแล้ว</span>
+                        <button class="btn btn-secondary btn-admin-toggle-status" data-student-id="${student.id}" data-action="unpay" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-radius:6px; cursor:pointer;">
+                            ยกเลิกจ่าย
+                        </button>
+                    </div>
+                `;
+            } else if (status === "pending" || status === "waiting") {
+                statusControlHTML = `
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                        <span class="status-badge pending" style="background:#eab308; border-color:#f59e0b; color:#fff; font-size:0.8rem; padding:0.25rem 0.5rem; border-radius:6px;">รออนุมัติ</span>
+                        <button class="btn btn-accent btn-admin-approve" data-student-id="${student.id}" style="padding: 0.3rem 0.65rem; font-size: 0.75rem; background:linear-gradient(90deg, #10b981, #059669); border:none; color:white; font-weight:600; cursor:pointer; border-radius:6px; transition:transform 0.1s;">
+                            ✅ อนุมัติการโอน
+                        </button>
+                        <button class="btn btn-secondary btn-admin-toggle-status" data-student-id="${student.id}" data-action="unpay" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-radius:6px; cursor:pointer;">
+                            ปฏิเสธ
+                        </button>
+                    </div>
+                `;
+            } else {
+                statusControlHTML = `
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                        <span class="status-badge unpaid" style="font-size:0.8rem; padding:0.25rem 0.5rem; border-radius:6px;">ยังไม่จ่าย</span>
+                        <button class="btn btn-primary btn-admin-toggle-status" data-student-id="${student.id}" data-action="pay" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-radius:6px; cursor:pointer;">
+                            ทำจ่าย
+                        </button>
+                    </div>
+                `;
+            }
+
             row.innerHTML = `
                 <td class="td-student-id">${student.id}</td>
                 <td class="td-student-name">${student.name}</td>
                 <td>
-                    <label class="status-toggle">
-                        <input type="checkbox" class="payment-checkbox" data-student-id="${student.id}" ${isPaid ? "checked" : ""}>
-                        <span class="toggle-slider"></span>
-                        <span class="status-text-label">${isPaid ? "จ่ายแล้ว" : "ยังไม่จ่าย"}</span>
-                    </label>
+                    ${statusControlHTML}
                 </td>
             `;
 
-            // เพิ่ม Event Listener ให้สวิตช์เปิดปิด
-            row.querySelector(".payment-checkbox").addEventListener("change", (e) => {
-                const sId = e.target.getAttribute("data-student-id");
-                const checked = e.target.checked;
-                
-                showToast(`กำลังบันทึกสถานะของ ${student.name}...`, "warning");
-                
-                // อัปเดตค่าลงใน Database
-                dbInstance.updatePaymentStatusRemote(sId, state.selectedMonth, checked).then(result => {
-                    // คำนวณยอดเงินและสถิติใหม่เฉพาะจุด
-                    const newStats = dbInstance.getStats(state.selectedMonth);
-                    metricTotalPaid.textContent = `${newStats.paidCount} / ${newStats.totalStudents} คน`;
-                    metricTotalAmount.textContent = `${newStats.paidAmount.toLocaleString()} บาท`;
-                    metricPercentText.textContent = `${newStats.percentPaid}% จ่ายแล้ว`;
-                    progressFill.style.width = `${newStats.percentPaid}%`;
-                    
-                    // เปลี่ยนข้อความประกอบสวิตช์
-                    const label = e.target.closest(".status-toggle").querySelector(".status-text-label");
-                    label.textContent = checked ? "จ่ายแล้ว" : "ยังไม่จ่าย";
+            // ผูกฟังก์ชันการทำงานปุ่มต่างๆ ในแถวแอดมิน
+            const approveBtn = row.querySelector(".btn-admin-approve");
+            if (approveBtn) {
+                approveBtn.addEventListener("click", () => {
+                    updateStudentStatusAdmin(student.id, "paid", student.name);
+                });
+            }
 
-                    if (result.success) {
-                        if (!result.localOnly) {
-                            showToast(`อัปเดตสถานะของ ${student.name} บน Google Sheet เรียบร้อย!`, "success");
-                        } else {
-                            showToast(`อัปเดตสถานะของ ${student.name} เรียบร้อย (ในเบราว์เซอร์)`, "success");
-                        }
-                    } else {
-                        showToast(`อัปเดตบน Google Sheet ล้มเหลว: ${result.error}`, "danger");
-                        // คืนค่าสถานะเดิม
-                        dbInstance.updatePaymentStatus(sId, state.selectedMonth, !checked);
-                        renderAdminDashboard();
-                    }
+            row.querySelectorAll(".btn-admin-toggle-status").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const action = btn.getAttribute("data-action");
+                    const newStatus = action === "pay" ? "paid" : "unpaid";
+                    updateStudentStatusAdmin(student.id, newStatus, student.name);
                 });
             });
 
@@ -829,7 +742,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================
     btnExportCsv.addEventListener("click", () => {
         const dbInstance = window.classroomDb;
-        const students = dbInstance.getAllStudents();
+        const students = dbInstance.getAllStudents().filter(s => s.id !== "CONFIG_LOCKED_MONTHS");
         const monthNameTh = MONTH_NAMES[state.selectedMonth];
         
         // หัวตาราง CSV (มี BOM เพื่อให้ภาษาไทยใน Excel แสดงผลถูกต้อง)
@@ -837,8 +750,14 @@ document.addEventListener("DOMContentLoaded", () => {
         csvContent += "รหัสนักศึกษา,ชื่อ-นามสกุล,เดือน,ยอดชำระ,สถานะการจ่ายเงิน\n";
         
         students.forEach(student => {
-            const isPaid = student.status[state.selectedMonth] ? "จ่ายแล้ว" : "ยังไม่จ่าย";
-            csvContent += `"${student.id}","${student.name}","${monthNameTh}",100,"${isPaid}"\n`;
+            const status = student.status[state.selectedMonth] || "unpaid";
+            let statusText = "ยังไม่จ่าย";
+            if (status === "paid" || status === true || status === "true") {
+                statusText = "จ่ายแล้ว";
+            } else if (status === "pending" || status === "waiting") {
+                statusText = "รออนุมัติ";
+            }
+            csvContent += `"${student.id}","${student.name}","${monthNameTh}",100,"${statusText}"\n`;
         });
         
         // สร้างไฟล์ชั่วคราวและดาวน์โหลด
