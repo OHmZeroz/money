@@ -355,6 +355,41 @@
         </div>
     </div>
 
+    <!-- MODAL POPUP: Admin Login Modal -->
+    <div id="admin-login-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="modal-header" style="justify-content: flex-end; margin-bottom: 0.5rem; border: none; padding: 0;">
+                <button id="btn-close-admin-modal" class="modal-close">&times;</button>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <span style="font-size: 3rem; filter: drop-shadow(0 0 15px var(--primary-glow));">🔒</span>
+                <h3 style="font-family: var(--font-heading); font-size: 1.5rem; margin-top: 1rem; margin-bottom: 0.25rem;">ระบบตรวจสอบสิทธิ์แอดมิน</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">กรุณากรอกรหัสผ่านเพื่อเข้าใช้งานฟังก์ชันจัดการห้องเรียน</p>
+            </div>
+
+            <form id="admin-login-form">
+                <div class="form-group" style="text-align: left; margin-bottom: 1.5rem;">
+                    <label for="admin-password-input" style="font-size: 0.85rem; margin-bottom: 0.5rem; display: block; color: var(--text-main);">รหัสผ่านผู้ดูแลระบบ</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" id="admin-password-input" class="input-style" placeholder="กรอกรหัสผ่าน (เริ่มต้น: 1234)" style="padding-right: 3rem; width: 100%; box-sizing: border-box;" autocomplete="current-password" required>
+                        <button type="button" id="btn-toggle-password-visibility" style="position: absolute; right: 10px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; height: 100%; outline: none; padding: 0 5px;">👁️</button>
+                    </div>
+                </div>
+
+                <div id="admin-login-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1.25rem; text-align: left; display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.6rem 0.85rem; border-radius: 8px;">
+                    ❌ รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง
+                </div>
+
+                <button type="submit" id="btn-admin-login-submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">ยืนยันตัวตน ➔</button>
+            </form>
+            
+            <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 1.25rem; line-height: 1.4;">
+                💡 ระบบมีการจำกัดความผิดพลาดเพื่อความปลอดภัย (ผิด 5 ครั้งจะถูกล็อก 30 วินาที)
+            </p>
+        </div>
+    </div>
+
     <!-- ส่วนเก็บรายการแจ้งเตือนสไตล์ Toast -->
     <div id="toast-container" class="toast-container"></div>
 

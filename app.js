@@ -115,6 +115,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnSyncGSheet = document.getElementById("btn-sync-gsheet");
     const btnStudentSyncGSheet = document.getElementById("btn-student-sync-gsheet");
     
+    // Admin Login Modal Elements
+    const adminLoginModal = document.getElementById("admin-login-modal");
+    const btnCloseAdminModal = document.getElementById("btn-close-admin-modal");
+    const adminLoginForm = document.getElementById("admin-login-form");
+    const adminPasswordInput = document.getElementById("admin-password-input");
+    const btnTogglePasswordVisibility = document.getElementById("btn-toggle-password-visibility");
+    const adminLoginError = document.getElementById("admin-login-error");
+    const btnAdminLoginSubmit = document.getElementById("btn-admin-login-submit");
+
     // Admin Metrics
     const metricTotalPaid = document.getElementById("metric-total-paid");
     const metricTotalAmount = document.getElementById("metric-total-amount");
@@ -254,12 +263,103 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // ตัวแปรและฟังก์ชันเกี่ยวกับการล็อกอินของแอดมินและการล็อกเอาต์เมื่อกรอกผิด
+    let adminFailedAttempts = 0;
+    let adminLockoutTimer = null;
+    let adminLockoutEndTime = 0;
+
+    function closeAdminModal() {
+        adminLoginModal.classList.remove("show");
+        if (adminLockoutTimer) {
+            clearTimeout(adminLockoutTimer);
+        }
+    }
+
+    function startAdminLockoutCooldown() {
+        adminPasswordInput.disabled = true;
+        btnAdminLoginSubmit.disabled = true;
+        btnTogglePasswordVisibility.disabled = true;
+        
+        const updateTimer = () => {
+            const timeLeft = Math.max(0, Math.round((adminLockoutEndTime - Date.now()) / 1000));
+            if (timeLeft > 0) {
+                adminLoginError.textContent = `🔒 สิทธิ์เข้าใช้งานถูกล็อกชั่วคราว ลองใหม่ในอีก ${timeLeft} วินาที`;
+                adminLockoutTimer = setTimeout(updateTimer, 1000);
+            } else {
+                adminPasswordInput.disabled = false;
+                btnAdminLoginSubmit.disabled = false;
+                btnTogglePasswordVisibility.disabled = false;
+                adminFailedAttempts = 0;
+                adminLoginError.style.display = "none";
+                adminPasswordInput.focus();
+            }
+        };
+        updateTimer();
+    }
+
+    // แสดงหน้าต่างล็อกอินแอดมิน
     adminToggleLink.addEventListener("click", () => {
-        const password = prompt("กรุณากรอกรหัสผ่านผู้ดูแลระบบ (รหัสผ่านเริ่มต้นคือ: 1234)");
+        // ตรวจสอบว่าอยู่ระหว่างล็อกดาวน์หรือไม่
+        const now = Date.now();
+        if (now < adminLockoutEndTime) {
+            adminLoginError.style.display = "block";
+            startAdminLockoutCooldown();
+        } else {
+            adminPasswordInput.value = "";
+            adminPasswordInput.disabled = false;
+            btnAdminLoginSubmit.disabled = false;
+            btnTogglePasswordVisibility.disabled = false;
+            adminLoginError.style.display = "none";
+            adminPasswordInput.type = "password";
+            btnTogglePasswordVisibility.textContent = "👁️";
+        }
+        
+        adminLoginModal.classList.add("show");
+        setTimeout(() => adminPasswordInput.focus(), 100);
+    });
+
+    // ปิดหน้าต่างล็อกอินแอดมิน
+    btnCloseAdminModal.addEventListener("click", closeAdminModal);
+    adminLoginModal.addEventListener("click", (e) => {
+        if (e.target === adminLoginModal) closeAdminModal();
+    });
+
+    // ปุ่มเปิด/ปิดตาแสดงรหัสผ่าน
+    btnTogglePasswordVisibility.addEventListener("click", () => {
+        if (adminPasswordInput.disabled) return;
+        if (adminPasswordInput.type === "password") {
+            adminPasswordInput.type = "text";
+            btnTogglePasswordVisibility.textContent = "🙈";
+        } else {
+            adminPasswordInput.type = "password";
+            btnTogglePasswordVisibility.textContent = "👁️";
+        }
+    });
+
+    // ยืนยันฟอร์มล็อกอินแอดมิน
+    adminLoginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        
+        const now = Date.now();
+        if (now < adminLockoutEndTime) return;
+
+        const password = adminPasswordInput.value;
         if (password === "1234") {
+            adminFailedAttempts = 0;
+            closeAdminModal();
             loginAsAdmin();
-        } else if (password !== null) {
-            showToast("รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง", "danger");
+        } else {
+            adminFailedAttempts++;
+            adminLoginError.style.display = "block";
+            adminPasswordInput.value = "";
+            adminPasswordInput.focus();
+            
+            if (adminFailedAttempts >= 5) {
+                adminLockoutEndTime = Date.now() + 30000;
+                startAdminLockoutCooldown();
+            } else {
+                adminLoginError.textContent = `❌ รหัสผ่านไม่ถูกต้อง (กรอกผิดอีก ${5 - adminFailedAttempts} ครั้งระบบจะล็อก)`;
+            }
         }
     });
 
